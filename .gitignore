@@ -18,6 +18,7 @@ Tetris
 # --- Logs / Temp ---
 *.log
 *.tmp
+*.txt
 
 # --- VSCode ---
 .vscode/
