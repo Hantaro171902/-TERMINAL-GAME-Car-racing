@@ -7,11 +7,11 @@ class Enermy {
 private:
   /* data */
   int x, y;
-  vector<string> shape = {
-
-    - -
-    [╠]
-    
+  std::vector<std::string> shape = {
+    "[╦───╦]"
+    " ║███║ "
+    "[╬═══╬]"
+    " ╚───╝ "
   };
 public:
   Enermy(int startX, int startY) : x(startX), y(startY);
