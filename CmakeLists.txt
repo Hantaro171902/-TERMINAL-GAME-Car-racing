@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Project name and version
-project(ProjectName VERSION 1.0)
+project(carRacing VERSION 1.0)
 
 # Use C++17
 set(CMAKE_CXX_STANDARD 17)
@@ -13,18 +13,24 @@ set(SOURCES
     src/utils.cpp
     src/color.cpp
     src/cursor_input.cpp
+    src/car.cpp
+    src/enemy.cpp
+    src/game.cpp
 )
 
 set(HEADERS
     src/headers/color.hpp
     src/headers/utils.hpp
     src/headers/cursor_input.hpp
+    src/headers/car.cpp
+    src/headers/enemy.cpp
+    src/headers/game.cpp
 )
 
 # Exe
-add_executable(ProjectName ${SOURCES} ${HEADERS})
+add_executable(carRacing ${SOURCES} ${HEADERS})
 
-target_include_directories(ProjectName PRIVATE src/headers)
+target_include_directories(carRacing PRIVATE src/headers)
 
 # Optional: copy asset folder into build dir
 file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})

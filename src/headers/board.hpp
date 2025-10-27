@@ -4,22 +4,24 @@
 #include <vector>
 
 class Board {
-  private:
-    /* data */
-    int width;
-    int height;
-    std::vector<std::string> road;
+    private:
+        /* data */
+        int x, y;           // top-left coordinate (1-based for move_cursor)
+        int w, h;
+        int hudRow;
+        std::vector<std::vector<char>> board;
 
-  public:
+    public:
 
-    Board(int w, int h) : width(w), height(h) {
-      // Initialize road with empty strings
-      road.resize(height, std::string(width, ' '));
-    }
-    
-    void draw();
-    void scroll();
-    int getWidth() const { return width; }
-    int getHeight() const { return height; }
-    const std::vector<std::string>& getRoad() const { return road; }
+        Board(int x, int y, int w, int h, int hudRow = 0);
+        ~Board() = default;
+  
+        void clear();
+        void setCell(int r, int c, char ch);
+        char getCell(int r, int c) const;
+        void draw() const;
+        int getX() const { return x; }
+        int getY() const { return y; }
+        int getWidth() const { return w; }
+        int getHeight() const { return h; }
 }

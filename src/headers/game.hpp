@@ -2,23 +2,36 @@
 
 #include <string>
 #include <vector>
+#include "board.hpp"
+#include "car.hpp"
+#include "enermy.hpp"
 
 class Game {
-  private:
-    /* data */
-    int width;
-    int height;
+  
+private:
+    void processInput();
+    void update(float dt);
+    void render();
+    bool checkCollision(const Car &c, const Enermy &e) const;
+
+private:
+    Board *board;
+    Car *player;
+    std::vector<Enermy> enemies;
+
+    int cols, rows;
     int score;
     int level;
-    bool gameOver;
+    bool running;
 
-  public:
-    Game(int w, int h) : width(w), height(h), score(0), level(1), gameOver(false) {}
-    
+    float spawnTimer;
+    float spawnInterval;
+    float baseSpeed;
+
+public:
+    Game();
+    ~Game();
+
     void init();
-    void update();
-    void render();
-    bool isGameOver() const { return gameOver; }
-    int getScore() const { return score; }
-    int getLevel() const { return level; }
+    void run();
 };
