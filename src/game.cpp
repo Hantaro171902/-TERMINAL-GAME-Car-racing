@@ -9,6 +9,7 @@
 #include "cursor_input.hpp"
 
 #include <iostream>
+#include <fstream> // For file output
 #include <chrono>
 #include <thread>
 #include <vector>
@@ -36,9 +37,12 @@ void Game::init() {
     clearScreen();
     int cols = 80, rows = 24;
     get_terminal_size(cols, rows);
+    cerr << "Terminal size: cols=" << cols << ", rows=" << rows << endl;
 
     // Total inner cells: 64 - 2 borders = 62 (3x20 lanes + 2 dashes)
-    int brdW = 62;
+    // For 5 lanes, we need 4 separators. Each lane is 10 cells wide (20 printed chars).
+    // 5 lanes * 10 cells/lane + 4 separators * 1 cell/separator = 54 cells
+    int brdW = 54; // 5 lanes * 10 cells/lane + 4 separators
     int brdH = 20;
 
     // Auto-adjust if needed
@@ -54,21 +58,34 @@ void Game::init() {
     board = new Board(brdX, brdY, brdW, brdH, 0);
     board->clear();
 
-    // Lanes: left 0-19 (center 10), dash 20, middle 21-40 (center 30), dash 41, right 42-61 (center 51)
-    lanes.clear();
-    int w = board->getWidth();  // 62
+    // Lanes: 5 lanes, each 10 cells wide. Separators are 1 cell wide.
+    // Lane 0: cells 0-9 (center 4)
+    // Separator 0: cell 10
+    // Lane 1: cells 11-20 (center 15)
+    // Separator 1: cell 21
+    // Lane 2: cells 22-31 (center 26)
+    // Separator 2: cell 32
+    // Lane 3: cells 33-42 (center 37)
+    // Separator 3: cell 43
+    // Lane 4: cells 44-53 (center 48)
 
-    int c0 = 10;  // Left center
-    int c1 = 30;  // Middle center
-    int c2 = 51;  // Right center
+    lanes.clear();
+    int w = board->getWidth();  // 54
+
+    // Center columns for each lane (approximate, adjusted for sprite width later)
+    int c0 = 4;   // Lane 0 center
+    int c1 = 15;  // Lane 1 center
+    int c2 = 26;  // Lane 2 center
+    int c3 = 37;  // Lane 3 center
+    int c4 = 48;  // Lane 4 center
 
     auto cell_to_x = [&](int colIndex)->int{
-        return brdX + 1 + 2 * colIndex;
+        return brdX + 1 + 2 * colIndex; // Each cell is 2 printed characters
     };
 
-    // Player starts in middle lane (index 1)
+    // Player starts in middle lane (index 2)
     delete player;
-    player = new Car(1, brdY + brdH - 6);
+    player = new Car(2, brdY + brdH - 6);
     player->setBaseY(brdY + brdH - 6);
 
     int spriteW = player->getW();
@@ -76,6 +93,8 @@ void Game::init() {
     int laneX0 = cell_to_x(c0) - (spriteW / 2);
     int laneX1 = cell_to_x(c1) - (spriteW / 2);
     int laneX2 = cell_to_x(c2) - (spriteW / 2);
+    int laneX3 = cell_to_x(c3) - (spriteW / 2);
+    int laneX4 = cell_to_x(c4) - (spriteW / 2);
 
     // Clamp
     auto clampToBoard = [&](int xVal)->int{
@@ -86,13 +105,11 @@ void Game::init() {
         return xVal;
     };
 
-    laneX0 = clampToBoard(laneX0);
-    laneX1 = clampToBoard(laneX1);
-    laneX2 = clampToBoard(laneX2);
-
-    lanes.push_back(laneX0);
-    lanes.push_back(laneX1);
-    lanes.push_back(laneX2);
+    lanes.push_back(clampToBoard(laneX0));
+    lanes.push_back(clampToBoard(laneX1));
+    lanes.push_back(clampToBoard(laneX2));
+    lanes.push_back(clampToBoard(laneX3));
+    lanes.push_back(clampToBoard(laneX4));
 
     player->setLanes(lanes);
 
@@ -100,8 +117,8 @@ void Game::init() {
     enemies.clear();
     enemies.resize(8);
     spawnTimer = 0.0f;
-    spawnInterval = 1.15f;
-    baseSpeed = 2.2f;
+    spawnInterval = 3.0f; // Start with a longer interval
+    baseSpeed = 1.0f;     // Start with a slower speed
 
     score = 0;
     level = 1;
@@ -109,6 +126,7 @@ void Game::init() {
     startTime = chrono::steady_clock::now();
 
     running = true;
+    cerr << "init() completed. running = " << (running ? "true" : "false") << endl;
 }
 
 
@@ -131,6 +149,8 @@ void Game::processInput() {
             return;
         case InputKey::Q:
         case InputKey::ESC:
+            // Debug print to check if Q or ESC is being detected
+            cerr << "Detected Q or ESC. Setting running to false." << endl;
             running = false;
             return;
         case InputKey::PAUSE:
@@ -138,11 +158,9 @@ void Game::processInput() {
             cout << "Paused. Press P to resume.";
             cout.flush();
             while (true) {
-                if (kbhit()) {
-                    InputKey pk = getInputKey();
-                    if (pk == InputKey::PAUSE) break;
-                    if (pk == InputKey::Q || pk == InputKey::ESC) { running = false; break; }
-                }
+                InputKey pk = getInputKey();
+                if (pk == InputKey::PAUSE) break;
+                if (pk == InputKey::Q || pk == InputKey::ESC) { running = false; break; }
                 sleep_ms(60);
             }
             break;
@@ -159,8 +177,8 @@ void Game::spawnEnemyInLane(int laneIndex) {
     for (auto &e : enemies) {
         if (!e.isActive()) {
             int sx = lanes[laneIndex];
-            int sy = board->getY() - 4;  // Like ref: start above -8 etc.
-            float sp = baseSpeed + (level - 1) * 0.5f + ((float)random_range(0, 100) / 200.0f);
+            int sy = board->getY() - 20;  // Spawn much further up
+            float sp = baseSpeed + (level - 1) * 0.1f + ((float)random_range(0, 100) / 200.0f);
             e.spawnLane(laneIndex, lanes, sy, sp);
             return;
         }
@@ -173,48 +191,50 @@ void Game::update(float dt) {
     elapsedSeconds = (int)chrono::duration_cast<chrono::seconds>(now - startTime).count();
 
     if (spawnTimer >= spawnInterval) {
-        int lane = random_range(0, 2);
+        int lane = random_range(0, 4); // Now 5 lanes (0-4)
         spawnEnemyInLane(lane);
         spawnTimer = 0.0f;
-        spawnInterval = max(0.45f, spawnInterval - 0.005f);
+        spawnInterval = max(0.45f, spawnInterval - 0.001f);
     }
 
     for (auto &e : enemies) {
         if (!e.isActive()) continue;
         e.update(dt);
-
-        if (e.getY() > board->getY() + board->getHeight()) {
-            e.deactivate();
-            score++;
-            if (score % 6 == 0) {
-                level++;
-                baseSpeed += 0.5f;
-            }
-        }
     }
 
     // collision (simple overlap like ref)
-    for (auto &e : enemies) {
-        if (!e.isActive()) continue;
-        if (e.getY() < board->getY() - e.getH() / 2) continue;
+    // for (auto &e : enemies) {
+    //     if (!e.isActive()) continue;
 
-        int ax1 = player->getX();
-        int ay1 = player->getY();
-        int ax2 = ax1 + player->getW() - 1;
-        int ay2 = ay1 + player->getH() - 1;
+    //     // if (e.getY() < board->getY() - e.getH() / 2) continue; // Re-enabled
 
-        int bx1 = e.getX();
-        int by1 = e.getY();
-        int bx2 = bx1 + e.getW() - 1;
-        int by2 = by1 + e.getH() - 1;
+    //     int ax1 = player->getX();
+    //     int ay1 = player->getY();
+    //     int ax2 = ax1 + player->getW() - 1;
+    //     int ay2 = ay1 + player->getH() - 1;
 
-        bool horiz = !(ax2 < bx1 || bx2 < ax1);
-        bool vert  = !(ay2 < by1 || by2 < ay1);
-        if (horiz && vert) {
-            running = false;
-            return;
-        }
-    }
+    //     int bx1 = e.getX();
+    //     int by1 = e.getY();
+    //     int bx2 = bx1 + e.getW() - 1;
+    //     int by2 = by1 + e.getH() - 1;
+
+    //     bool horiz = !(ax2 < bx1 || bx2 < ax1);
+    //     bool vert  = !(ay2 < by1 || by2 < ay1);
+
+    //     if (horiz && vert) {
+    //         running = false;
+    //         return;
+    //     }
+
+    //     if (e.getY() > board->getY() + board->getHeight()) {
+    //         e.deactivate();
+    //         score++;
+    //         if (score % 6 == 0) {
+    //             level++;
+    //             baseSpeed += 0.1f; // Increase speed more gradually
+    //         }
+    //     }
+    // }
 }
 
 void Game::render() {
@@ -229,13 +249,23 @@ void Game::render() {
     // Draw board (narrow)
     board->draw();
 
-    // Draw lane separators
-    int lane1_col = 20;
-    int lane2_col = 41;
+    // Animated dashes for 5 lanes (4 separators)
+    static int dashOffset = 0; // To animate the dashes
+    dashOffset = (dashOffset + 1) % 4; // Cycle 0, 1, 2, 3
+
+    // Separator columns (based on 10 cells per lane)
+    int sepCols[] = {10, 21, 32, 43};
+
     for (int r = 0; r < board->getHeight(); ++r) {
-        if (r % 4 != 0) {
-            board->setCell(r, lane1_col, '|');
-            board->setCell(r, lane2_col, '|');
+        for (int i = 0; i < 4; ++i) { // For each of the 4 separators
+            int col = sepCols[i];
+            // Animate: dash appears every 4 rows, offset by dashOffset
+            if ((r + dashOffset) % 4 == 0) {
+                board->setCell(r, col, '|');
+            }
+            else {
+                board->setCell(r, col, ' ');
+            }
         }
     }
     board->draw();  // Redraw with dashes

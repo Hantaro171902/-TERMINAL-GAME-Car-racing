@@ -21,18 +21,18 @@ void Renderer::drawSideMenu(int hudX, int hudY, int score, int elapsedSeconds, i
     // draw small boxed hud
     move_cursor(hudX, hudY);
     setTextColor(TextColor::YELLOW);
-    cout << "╔════════════════╗";
+    cout << "╔════════════════════════╗";
     move_cursor(hudX, hudY + 1);
-    cout << "║ Time  " << setw(8) << fmtTime(elapsedSeconds) << " ║";  // Fixed: setw(8)
+    cout << "║ Time  " << setw(16) << fmtTime(elapsedSeconds) << " ║";  // Fixed: setw(8)
     move_cursor(hudX, hudY + 2);
-    cout << "║ Score " << setw(8) << score << " ║";  // Fixed: setw(8)
+    cout << "║ Score " << setw(16) << score << " ║";  // Fixed: setw(8)
     move_cursor(hudX, hudY + 3);
-    cout << "║ Level " << setw(8) << level << " ║";  // Fixed: setw(8)
+    cout << "║ Level " << setw(16) << level << " ║";  // Fixed: setw(8)
     move_cursor(hudX, hudY + 4);
     // show speed with 2 decimals
-    cout << "║ Speed " << setw(7) << fixed << setprecision(1) << speed << " ║";
+    cout << "║ Speed " << setw(16) << fixed << setprecision(1) << speed << " ║";
     move_cursor(hudX, hudY + 5);
-    cout << "╚════════════════╝";
+    cout << "╚════════════════════════╝";
     resetTextColor();
 
     // draw instructions box under HUD (leave some vertical spacing)

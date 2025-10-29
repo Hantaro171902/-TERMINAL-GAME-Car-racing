@@ -6,7 +6,7 @@
 using namespace std;
 
 Enemy::Enemy()
-    : laneIdx(0), yf(0.0f), speed(0.0f), w(5), h(4), active(false)
+    : laneIdx(0), yf(0.0f), speed(0.0f), h(4), active(false)
 {
     shape = {
         "[╦───╦]",
@@ -15,8 +15,7 @@ Enemy::Enemy()
         " ╚───╝ "    
     };
     h = (int)shape.size();
-    // w = (int)shape[0].size();
-    w = 5;
+    w = (int)shape[0].size();
 }
 
 void Enemy::spawnLane(int laneIndex, const vector<int>& laneXs_, int sy, float sp) {
