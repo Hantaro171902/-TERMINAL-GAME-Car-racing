@@ -20,7 +20,6 @@ Car::Car(int startLane, int baseY)
 
 void Car::setLanes(const vector<int>& laneXs) {
     lanes = laneXs;
-    // clamp laneIndex
     if (laneIndex < 0) laneIndex = 0;
     if (laneIndex >= (int)lanes.size()) laneIndex = (int)lanes.size() - 1;
 }

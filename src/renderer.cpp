@@ -1,11 +1,14 @@
+// renderer.cpp
 #include "renderer.hpp"
 #include "utils.hpp"
 #include "color.hpp"
 #include <iostream>
 #include <iomanip>
+#include <cstdio>
+
 using namespace std;
 
-static string fmtTime(int secs) {
+string Renderer::fmtTime(int secs) const {
     int m = secs / 60;
     int s = secs % 60;
     char buf[16];
@@ -20,11 +23,11 @@ void Renderer::drawSideMenu(int hudX, int hudY, int score, int elapsedSeconds, i
     setTextColor(TextColor::YELLOW);
     cout << "╔════════════════╗";
     move_cursor(hudX, hudY + 1);
-    cout << "║ Time  " << setw(9) << fmtTime(elapsedSeconds) << " ║";
+    cout << "║ Time  " << setw(8) << fmtTime(elapsedSeconds) << " ║";  // Fixed: setw(8)
     move_cursor(hudX, hudY + 2);
-    cout << "║ Score " << setw(9) << score << " ║";
+    cout << "║ Score " << setw(8) << score << " ║";  // Fixed: setw(8)
     move_cursor(hudX, hudY + 3);
-    cout << "║ Level " << setw(9) << level << " ║";
+    cout << "║ Level " << setw(8) << level << " ║";  // Fixed: setw(8)
     move_cursor(hudX, hudY + 4);
     // show speed with 2 decimals
     cout << "║ Speed " << setw(7) << fixed << setprecision(1) << speed << " ║";

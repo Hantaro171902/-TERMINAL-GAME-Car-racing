@@ -12,10 +12,7 @@ class Board {
         std::vector<std::vector<char>> board;
 
     public:
-
-        Board(int x, int y, int w, int h, int hudRow = 0);
-        ~Board() = default;
-
+        Board(int sx, int sy, int sw, int sh, int hud);
         void clear();
         void setCell(int r, int c, char ch);
         char getCell(int r, int c) const;

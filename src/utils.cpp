@@ -69,6 +69,17 @@ bool get_terminal_size(int &cols, int &rows) {
 #endif
 }
 
+int get_terminal_cols() {
+    int cols = 40, rows = 24;
+    if (get_terminal_size(cols, rows)) return cols;
+    return 80;
+}
+int get_terminal_rows() {
+    int cols = 40, rows = 24;
+    if (get_terminal_size(cols, rows)) return rows;
+    return 24;
+}
+
 void move_cursor(int x, int y) {
 #ifdef _WIN32
     COORD coord;
@@ -158,17 +169,6 @@ void terminal_size(int width, int height) {
     // Linux: usually can't resize terminal from code safely
     // Maybe print a warning or leave empty
 #endif
-}
-
-int get_terminal_cols() {
-    int cols = 80, rows = 24;
-    if (get_terminal_size(cols, rows)) return cols;
-    return 80;
-}
-int get_terminal_rows() {
-    int cols = 80, rows = 24;
-    if (get_terminal_size(cols, rows)) return rows;
-    return 24;
 }
 
 
