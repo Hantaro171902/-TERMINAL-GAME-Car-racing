@@ -15,7 +15,7 @@ class Board {
 
         Board(int x, int y, int w, int h, int hudRow = 0);
         ~Board() = default;
-  
+
         void clear();
         void setCell(int r, int c, char ch);
         char getCell(int r, int c) const;
@@ -24,4 +24,4 @@ class Board {
         int getY() const { return y; }
         int getWidth() const { return w; }
         int getHeight() const { return h; }
-}
+};

@@ -1,6 +1,7 @@
 #include "board.hpp"
 #include <iostream>
 #include "utils.hpp"
+#include "color.hpp"
 
 #define ROAD_SYMBOL '|'
 #define ROAD_WIDTH 80

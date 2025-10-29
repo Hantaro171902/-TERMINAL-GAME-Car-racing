@@ -40,6 +40,7 @@ InputKey getInputKey() {
             case '\n': key = InputKey::ENTER; break;
             case 27:   key = InputKey::ESC; break;
             case 'q': case 'Q': key = InputKey::Q; break;
+            case 'p': case 'P': key = InputKey::PAUSE; break;
             case 'r': case 'R': key = InputKey::R; break;
             case '[': key = InputKey::LEFT_BRACKET; break;
             case ']': key = InputKey::RIGHT_BRACKET; break;

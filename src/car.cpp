@@ -4,22 +4,30 @@
 
 using namespace std;
 
-
-Car::Car(int startX, int startY)
-    : x(startX), y(startY)
+Car::Car(int startLane, int baseY)
+    : laneIndex(startLane), y(baseY)
 {
     shape = {
-		"  v v  "
-		" ╔───╗ "
-		"[╬═══╬]"
-		" ║███║ "
+		"  v v  ",
+		" ╔───╗ ",
+		"[╬═══╬]",
+		" ║███║ ",
 		"[╩───╩]"
     };
     h = (int)shape.size();
     w = (int)shape[0].size();
 }
 
+void Car::setLanes(const vector<int>& laneXs) {
+    lanes = laneXs;
+    // clamp laneIndex
+    if (laneIndex < 0) laneIndex = 0;
+    if (laneIndex >= (int)lanes.size()) laneIndex = (int)lanes.size() - 1;
+}
+
 void Car::draw() const {
+    if (lanes.empty()) return;
+    int x = lanes[laneIndex];
     for (int i = 0; i < h; ++i) {
         move_cursor(x, y + i);
         cout << shape[i];
@@ -27,24 +35,33 @@ void Car::draw() const {
 }
 
 void Car::erase() const {
+    if (lanes.empty()) return;
+    int x = lanes[laneIndex];
     for (int i = 0; i < h; ++i) {
         move_cursor(x, y + i);
         cout << string(w, ' ');
     }
 }
 
-void Car::moveLeft(int leftBound) {
-    if (x - 3 >= leftBound) {
+void Car::moveLeft() {
+    if (laneIndex > 0) {
         erase();
-        x -= 3;
+        laneIndex--;
         draw();
     }
 }
 
-void Car::moveRight(int rightBound) {
-    if (x + w + 3 <= rightBound) {
+void Car::moveRight() {
+    if (laneIndex + 1 < (int)lanes.size()) {
         erase();
-        x += 3;
+        laneIndex++;
         draw();
     }
 }
+
+int Car::getX() const { return lanes.empty() ? 0 : lanes[laneIndex]; }
+int Car::getY() const { return y; }
+int Car::getW() const { return w; }
+int Car::getH() const { return h; }
+int Car::getLaneIndex() const { return laneIndex; }
+void Car::setBaseY(int by) { y = by; }

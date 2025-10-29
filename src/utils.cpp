@@ -160,6 +160,18 @@ void terminal_size(int width, int height) {
 #endif
 }
 
+int get_terminal_cols() {
+    int cols = 80, rows = 24;
+    if (get_terminal_size(cols, rows)) return cols;
+    return 80;
+}
+int get_terminal_rows() {
+    int cols = 80, rows = 24;
+    if (get_terminal_size(cols, rows)) return rows;
+    return 24;
+}
+
+
 void sleep_ms(int ms) {
 #ifdef _WIN32
     Sleep(ms);

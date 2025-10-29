@@ -16,15 +16,19 @@ set(SOURCES
     src/car.cpp
     src/enemy.cpp
     src/game.cpp
+    src/board.cpp
+    src/renderer.cpp
 )
 
 set(HEADERS
     src/headers/color.hpp
     src/headers/utils.hpp
     src/headers/cursor_input.hpp
-    src/headers/car.cpp
-    src/headers/enemy.cpp
-    src/headers/game.cpp
+    src/headers/car.hpp
+    src/headers/enemy.hpp
+    src/headers/game.hpp
+    src/headers/board.hpp
+    src/headers/renderer.hpp
 )
 
 # Exe

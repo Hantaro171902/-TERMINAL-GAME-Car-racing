@@ -18,6 +18,7 @@ enum class InputKey {
     ESC,
     Q, // Quit to menu
     R,  // Restart game
+    PAUSE,  // Pause
     LEFT_BRACKET, // '[' key
     RIGHT_BRACKET // ']' key
 };

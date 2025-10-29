@@ -2,36 +2,50 @@
 
 #include <string>
 #include <vector>
+#include <chrono>
 #include "board.hpp"
 #include "car.hpp"
-#include "enermy.hpp"
+#include "enemy.hpp"
 
+class Renderer;
 class Game {
   
-private:
-    void processInput();
-    void update(float dt);
-    void render();
-    bool checkCollision(const Car &c, const Enermy &e) const;
+    private:
+        void processInput();
+        void update(float dt);
+        void render();
+        
+        // helper to spawn into a lane
+        void spawnEnemyInLane(int laneIndex);
 
-private:
-    Board *board;
-    Car *player;
-    std::vector<Enermy> enemies;
+    private:
+        // world objects
+        Board* board;               // owned
+        Car* player;                // owned
+        Renderer* renderer;         // owned
+        std::vector<Enermy> enemies;
 
-    int cols, rows;
-    int score;
-    int level;
-    bool running;
+        // lanes (absolute X positions of 3 lanes, computed in init)
+        std::vector<int> lanes;
 
-    float spawnTimer;
-    float spawnInterval;
-    float baseSpeed;
+        // gameplay state
+        int score;
+        int level;
+        bool running;
 
-public:
-    Game();
-    ~Game();
+        // spawn / difficulty
+        float spawnTimer;
+        float spawnInterval;
+        float baseSpeed;
 
-    void init();
-    void run();
+        // timing / HUD
+        std::chrono::steady_clock::time_point startTime;
+        int elapsedSeconds;
+
+    public:
+        Game();
+        ~Game();
+
+        void init();
+        void run();
 };

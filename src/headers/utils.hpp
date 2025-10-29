@@ -24,6 +24,10 @@ bool get_terminal_size(int &cols, int &rows);
 void move_cursor(int x, int y);
 void play_sound(const std::string& path);
 
+// return terminal rows (fallback to 24 if failure)
+int get_terminal_rows();
+int get_terminal_cols();
+
 
 // Box drawing characters (UTF-8)
 extern const char SYMBOL_HORIZONTAL[];

@@ -4,30 +4,40 @@
 #include <vector>
 
 class Enermy {
-private:
-  	/* data */
-  	int x, y;
-    int w, h;
-    float speed;
-    bool active;
-    std::vector<std::string> shape;
-  	// std::vector<std::string> shape = {
-  	//   "[╦───╦]"
-  	//   " ║███║ "
-  	//   "[╬═══╬]"
-  	//   " ╚───╝ "
-  	// };
-public:
-    Enermy(int startX = 0, int startY = 0);
-    ~Enermy() = default;
+    private:
+        /* data */
+        std::vector<std::string> shape;
+        int laneIdx;
+        std::vector<int> laneXs;
+        float yf;   // y float
+        float speed;
+        int w, h;
+        bool active;
+        // std::vector<std::string> shape = {
+        //   "[╦───╦]"
+        //   " ║███║ "
+        //   "[╬═══╬]"
+        //   " ╚───╝ "
+        // };
+    public:
+        Enermy();
+        ~Enermy() = default;
 
-    void draw() const;
-    void erase() const;
-    void moveDown();
-    void spawn(int sx, int sy, float sp);
-    bool isActive() const;
-    int getX() const;
-    int getY() const;
-    int getW() const;
-    int getH() const;
+        void draw() const;
+        void erase() const;
+
+        // spawn into lane index (0..2), sy is top Y (can be negative), sp is speed rows/sec
+        void spawnLane(int laneIndex, const std::vector<int>& laneXs, int sy, float sp);
+
+        // update by dt seconds (float-based vertical movement)
+        void update(float dt);
+
+        bool isActive() const;
+        int getX() const;
+        int getY() const;
+        int getW() const;
+        int getH() const;
+        int getLaneIndex() const;
+
+        void deactivate();
 };

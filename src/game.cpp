@@ -1,177 +1,285 @@
 #include "game.hpp"
+#include "board.hpp"
+#include "car.hpp"
+#include "enemy.hpp"
+#include "renderer.hpp"
 #include "utils.hpp"
 #include "color.hpp"
+#include "cursor_input.hpp"
+
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <vector>
+#include <cmath>
 
 using namespace std;
 
 Game::Game()
-    : board(nullptr), player(nullptr), cols(80), rows(24),
-      score(0), level(1), running(true),
-      spawnTimer(0.0f), spawnInterval(1.0f), baseSpeed(1.0f)
-{ }
+    : board(nullptr), player(nullptr),
+      score(0), level(1), running(false),
+      spawnTimer(0.0f), spawnInterval(1.0f), baseSpeed(3.5f),
+      elapsedSeconds(0)
+{
+    renderer = new Renderer();
+}
 
 Game::~Game() {
     delete board;
     delete player;
+    delete renderer;
 }
 
 void Game::init() {
     clearScreen();
-    int termCols = 80, termRows = 24;
-    get_terminal_size(termCols, termRows);
-    cols = termCols; rows = termRows;
+    int cols = 80, rows = 24;
+    get_terminal_size(cols, rows);
 
-    int brdW = min(60, cols - 20);
-    int brdX = max(2, (cols - brdW) / 2);
-    int brdY = 2;
+    // place board on the left with a margin, like the Othello reference
+    int leftMargin = 4;
+    int brdW = min(40, cols - 36); // leave room for HUD on right
     int brdH = min(22, rows - 6);
+    int brdX = leftMargin;
+    int brdY = 3;
 
-    board = new Board(brdX, brdY, brdW, brdH);
+    // create board and clear it
+    delete board;
+    board = new Board(brdX, brdY, brdW, brdH, 0);
     board->clear();
 
-    // draw initial dashed center line into board (as characters) by toggling in update
-    player = new Car(brdX + brdW / 2 - 3, brdY + brdH - 4);
+    // lanes: compute 3 lane center x positions inside the board.
+    // Avoid using the exact board center (where dash will be) by shifting lanes.
+    lanes.clear();
+    int innerLeft = brdX + 3;
+    int innerRight = brdX + brdW - 6;
+    int laneA = innerLeft;
+    int laneB = (innerLeft + innerRight) / 2;
+    int laneC = innerRight;
+    lanes.push_back(laneA);
+    lanes.push_back(laneB);
+    lanes.push_back(laneC);
 
-    enemies.resize(6);
+    // create player (start in middle lane)
+    delete player;
+    player = new Car(1, brdY + brdH - 6); // lane set later
+    player->setBaseY(brdY + brdH - 6);
+    player->setLanes(lanes);
+
+    // prepare enemy pool
+    enemies.clear();
+    enemies.resize(8);
+    for (auto &e : enemies) { /* default constructed */ }
+
     spawnTimer = 0.0f;
-    spawnInterval = 1.1f;
-    baseSpeed = 1.0f;
-    score = 0; level = 1;
-}
-
-void Game::run() {
-    using clock = chrono::steady_clock;
-    auto last = clock::now();
+    spawnInterval = 1.0f;
+    baseSpeed = 3.5f;
+    score = 0;
+    level = 1;
     running = true;
-
-    hideCursor();
-    while (running) {
-        auto now = clock::now();
-        float dt = chrono::duration<float>(now - last).count();
-        if (dt < 1.0f/40.0f) { // aim 40 fps
-            this_thread::sleep_for(chrono::milliseconds(4));
-            continue;
-        }
-        last = now;
-
-        processInput();
-        update(dt);
-        render();
-    }
-    showCursor();
-
-    // Game over screen
-    clearScreen();
-    move_cursor(cols/2 - 10, rows/2 - 1);
-    cout << "=== GAME OVER ===";
-    move_cursor(cols/2 - 10, rows/2 + 1);
-    cout << "Score: " << score << "  Level: " << level;
-    move_cursor(1, rows);
+    startTime = chrono::steady_clock::now();
 }
+
 
 void Game::processInput() {
-    if (kbhit()) {
-        int ch = getch();
-        if (ch == 'a' || ch == 'A') player->moveLeft(board->getX() + 2);
-        else if (ch == 'd' || ch == 'D') player->moveRight(board->getX() + board->getWidth() - 2);
-        else if (ch == 'q' || ch == 'Q' || ch == 27) running = false;
-        else if (ch == 'p' || ch == 'P') {
-            move_cursor(1, rows);
-            cout << "Paused. Press P to resume.";
-            while (true) {
-                if (kbhit()) {
-                    int c = getch();
-                    if (c == 'p' || c == 'P') break;
-                    if (c == 'q' || c == 'Q' || c == 27) { running = false; break; }
+    // consume all pending keys this frame (non-blocking)
+    while (kbhit()) {
+        InputKey key = getInputKey(); // safe: we already checked kbhit()
+        switch (key) {
+            case InputKey::LEFT:
+                player->moveLeft();
+                break;
+
+            case InputKey::RIGHT:
+                player->moveRight();
+                break;
+
+            case InputKey::UP:
+            case InputKey::DOWN:
+                // not used in lane-based racer — ignore for now
+                break;
+
+            case InputKey::ENTER:
+                // if you later want a special action on ENTER, handle here
+                break;
+
+            case InputKey::R:
+                // reset game (re-init)
+                init();
+                return; // after re-init, skip processing further pending keys
+                // NOTE: if you prefer a softer "reset" method, call that instead
+
+            case InputKey::Q:
+            case InputKey::ESC:
+                running = false;
+                return;
+
+            case InputKey::PAUSE:
+                // pause loop
+                move_cursor(1, get_terminal_rows());
+                cout << "Paused. Press P to resume.";
+                cout.flush();
+                while (true) {
+                    if (kbhit()) {
+                        InputKey pk = getInputKey();
+                        if (pk == InputKey::PAUSE) break;
+                        if (pk == InputKey::Q || pk == InputKey::ESC) { running = false; break; }
+                    }
+                    sleep_ms(60);
                 }
-                sleep_ms(80);
-            }
+                break;
+
+            case InputKey::LEFT_BRACKET:
+                // optional: step debug or move cursor in editor
+                break;
+            case InputKey::RIGHT_BRACKET:
+                break;
+
+            case InputKey::NONE:
+            default:
+                // ignore unknown/none
+                break;
+        }
+    }
+}
+
+void Game::spawnEnemyInLane(int laneIndex) {
+    // find free slot
+    for (auto &e : enemies) {
+        if (!e.isActive()) {
+            int sx = lanes[laneIndex];
+            int sy = board->getY() - 4; // above visible board
+            float sp = baseSpeed + (level - 1) * 0.6f + ((float)random_range(0,100)/200.0f);
+            e.spawnLane(laneIndex, lanes, sy, sp);
+            return;
         }
     }
 }
 
 void Game::update(float dt) {
-    // spawn control
+    // update timers
     spawnTimer += dt;
+    auto now = chrono::steady_clock::now();
+    elapsedSeconds = (int)chrono::duration_cast<chrono::seconds>(now - startTime).count();
+
+    // spawn logic: spawn randomly in lanes every spawnInterval
     if (spawnTimer >= spawnInterval) {
-        // find free slot
-        for (auto &e : enemies) {
-            if (!e.isActive()) {
-                int left = board->getX() + 2;
-                int right = board->getX() + board->getWidth() - e.getW() - 2;
-                int sx = random_range(left, right);
-                e.spawn(sx, board->getY() - 3, baseSpeed + (level - 1) * 0.4f);
-                break;
-            }
-        }
+        int lane = random_range(0, 2);
+        spawnEnemyInLane(lane);
         spawnTimer = 0.0f;
-        spawnInterval = max(0.45f, spawnInterval - 0.01f);
+        spawnInterval = max(0.45f, spawnInterval - 0.005f); // slowly increase spawn rate
     }
 
-    // update enemies (simple integer movement)
+    // update enemies
     for (auto &e : enemies) {
         if (!e.isActive()) continue;
-        // move down based on speed and dt; we'll step by integer rows for simplicity
-        static float accum = 0.0f; // small per-enemy accumulator would be ideal, but keep simple
-        accum += dt * e.getH() * e.getW(); // small noisy accumulator so enemies feel different
-        e.moveDown(); // one step per update; you can refine with floats if you want
-        // if passed bottom
+        // erase previous, update, then draw later in render
+        e.update(dt);
+
+        // if passed bottom of board
         if (e.getY() > board->getY() + board->getHeight()) {
-            e.erase();
-            // deactivate by moving y way off and toggling active (we used spawn()/isActive())
-            // reinitialize by setting active false through spawn to false - not provided; do manual:
-            // naive: mark inactive by moving x,y off-screen
-            // But Enermy does not expose deactivate; simplest: recreate by setting y negative and active false by re-spawning new Enermy
-            e = Enermy(); // reset slot
+            e.deactivate();
             score++;
             if (score % 6 == 0) {
                 level++;
                 baseSpeed += 0.5f;
             }
         }
-        // collision
-        if (checkCollision(*player, e)) {
+    }
+
+    // collision detection (player vs any active enemy)
+    for (auto &e : enemies) {
+        if (!e.isActive()) continue;
+        // bounding box collision
+        int ax1 = player->getX();
+        int ay1 = player->getY();
+        int ax2 = ax1 + player->getW() - 1;
+        int ay2 = ay1 + player->getH() - 1;
+
+        int bx1 = e.getX();
+        int by1 = e.getY();
+        int bx2 = bx1 + e.getW() - 1;
+        int by2 = by1 + e.getH() - 1;
+
+        bool horiz = !(ax2 < bx1 || bx2 < ax1);
+        bool vert  = !(ay2 < by1 || by2 < ay1);
+        if (horiz && vert) {
             running = false;
             return;
         }
-    }
-
-    // animate center dashed line inside board: shift pattern each update
-    // we'll toggle every call by clearing board and drawing a dashed center
-    board->clear();
-    int centerCol = board->getWidth() / 2;
-    static int dashOffset = 0;
-    dashOffset = (dashOffset + 1) % 4;
-    for (int r = 0; r < board->getHeight(); ++r) {
-        if ((r + dashOffset) % 4 == 0) board->setCell(r, centerCol, '|');
     }
 }
 
 void Game::render() {
     clearScreen();
-    // HUD
-    move_cursor(2, 1);
-    cout << "Terminal Racer  -  Score: " << score << "  Level: " << level << "  (A/D move, P pause, Q quit)";
 
-    // board (road)
+    // HUD top-left title
+    move_cursor(2,1);
+    setTextColor(TextColor::YELLOW);
+    cout << "Terminal Racer (left)  —  Score: " << score;
+    resetTextColor();
+
+    // draw board at its x,y
+    board->draw();
+
+    // draw dashed center line inside board (animated)
+    static int dashOffset = 0;
+    dashOffset = (dashOffset + 1) % 4;
+    int centerCol = board->getWidth() / 2;
+    for (int r = 0; r < board->getHeight(); ++r) {
+        if ((r + dashOffset) % 4 == 0) {
+            board->setCell(r, centerCol, '|');
+        } else {
+            // ensure empty if not dash
+            char c = board->getCell(r, centerCol);
+            if (c == '|') board->setCell(r, centerCol, ' ');
+        }
+    }
+
+    // re-draw board after altering center col cells
     board->draw();
 
     // draw enemies and player
-    for (auto &e : enemies) if (e.isActive()) e.draw();
+    for (auto &e : enemies) {
+        if (e.isActive()) e.draw();
+    }
     player->draw();
 
-    move_cursor(1, rows);
+    // Render side menu on the right of board
+    int hudX = board->getX() + board->getWidth() + 4;
+    int hudY = board->getY() + 1;
+    renderer->drawSideMenu(hudX, hudY, score, elapsedSeconds, level, baseSpeed);
+
+    move_cursor(1, get_terminal_rows());
     cout.flush();
 }
 
-bool Game::checkCollision(const Car &c, const Enermy &e) const {
-    if (!e.isActive()) return false;
-    int ax1 = c.getX(), ay1 = c.getY(), ax2 = ax1 + c.getW() - 1, ay2 = ay1 + c.getH() - 1;
-    int bx1 = e.getX(), by1 = e.getY(), bx2 = bx1 + e.getW() - 1, by2 = by1 + e.getH() - 1;
-    bool horiz = !(ax2 < bx1 || bx2 < ax1);
-    bool vert  = !(ay2 < by1 || by2 < ay1);
-    return horiz && vert;
+void Game::run() {
+    if (!board) init();
+
+    hideCursor();
+    using clock = chrono::steady_clock;
+    auto last = clock::now();
+    startTime = last;
+
+    while (running) {
+        auto now = clock::now();
+        float dt = chrono::duration<float>(now - last).count();
+        if (dt < 1.0f/60.0f) { this_thread::sleep_for(chrono::milliseconds(3)); continue; }
+        last = now;
+
+        processInput();
+        update(dt);
+        render();
+    }
+
+    // game over display
+    clearScreen();
+    int cols = 80, rows = 24;
+    get_terminal_size(cols, rows);
+    move_cursor(cols/2 - 12, rows/2 - 1);
+    cout << "=====  GAME OVER  =====";
+    move_cursor(cols/2 - 10, rows/2 + 1);
+    cout << "Score: " << score << "  Level: " << level;
+    move_cursor(1, rows);
+    showCursor();
 }
