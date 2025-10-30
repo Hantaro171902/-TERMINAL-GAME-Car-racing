@@ -18,12 +18,13 @@ Enemy::Enemy()
     w = (int)shape[0].size();
 }
 
-void Enemy::spawnLane(int laneIndex, const vector<int>& laneXs_, int sy, float sp) {
+void Enemy::spawnLane(int laneIndex, const vector<int>& laneXs_, int sy, float sp, int bottomY) {
     laneIdx = laneIndex;
     laneXs = laneXs_;
     yf = (float)sy;
     speed = sp;
     active = true;
+    boardBottom = bottomY;  // Set board bottom for clipping
 }
 
 void Enemy::update(float dt) {
@@ -36,9 +37,10 @@ void Enemy::draw() const {
     int xi = laneXs[laneIdx];
     int yi = (int)round(yf);
     for (int i = 0; i < h; ++i) {
-        if (yi + i >= 0) {  // Like ref: only if >=0
+        int rowY = yi + i;
+        if (rowY >= 0 && rowY <= boardBottom) {
             move_cursor(xi, yi + i);
-            cout << shape[i];
+            cout << shape[i];        
         }
     }
 }
@@ -48,8 +50,9 @@ void Enemy::erase() const {
     int xi = laneXs[laneIdx];
     int yi = (int)round(yf);
     for (int i = 0; i < h; ++i) {
-        if (yi + i >= 0 && yi + i <= 24) {  // Erase visible only
-            move_cursor(xi, yi + i);
+        int rowY = yi + i;
+        if (rowY >= 0 && rowY <= boardBottom + 1) {  // +1 for safety
+            move_cursor(xi, rowY);
             cout << string(w, ' ');
         }
     }

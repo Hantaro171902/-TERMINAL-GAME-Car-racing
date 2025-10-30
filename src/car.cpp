@@ -1,4 +1,5 @@
 #include "car.hpp"
+#include "color.hpp"
 #include <iostream>
 #include <utils.hpp>
 
@@ -27,10 +28,12 @@ void Car::setLanes(const vector<int>& laneXs) {
 void Car::draw() const {
     if (lanes.empty()) return;
     int x = lanes[laneIndex];
+    setTextColor(BLUE);
     for (int i = 0; i < h; ++i) {
         move_cursor(x, y + i);
         cout << shape[i];
     }
+    resetTextColor();
 }
 
 void Car::erase() const {

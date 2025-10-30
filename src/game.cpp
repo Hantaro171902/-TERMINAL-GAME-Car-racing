@@ -15,6 +15,8 @@
 #include <vector>
 #include <cmath>
 #include <iomanip>
+#include <algorithm>
+#include <random>
 
 using namespace std;
 
@@ -117,7 +119,7 @@ void Game::init() {
     enemies.clear();
     enemies.resize(8);
     spawnTimer = 0.0f;
-    spawnInterval = 3.0f; // Start with a longer interval
+    spawnInterval = 1.5f; // Start with a longer interval
     baseSpeed = 1.0f;     // Start with a slower speed
 
     score = 0;
@@ -179,7 +181,7 @@ void Game::spawnEnemyInLane(int laneIndex) {
             int sx = lanes[laneIndex];
             int sy = board->getY() - 20;  // Spawn much further up
             float sp = baseSpeed + (level - 1) * 0.1f + ((float)random_range(0, 100) / 200.0f);
-            e.spawnLane(laneIndex, lanes, sy, sp);
+            e.spawnLane(laneIndex, lanes, sy, sp, board->getY() + board->getHeight());
             return;
         }
     }
@@ -191,10 +193,18 @@ void Game::update(float dt) {
     elapsedSeconds = (int)chrono::duration_cast<chrono::seconds>(now - startTime).count();
 
     if (spawnTimer >= spawnInterval) {
-        int lane = random_range(0, 4); // Now 5 lanes (0-4)
-        spawnEnemyInLane(lane);
+        int numToSpawn = random_range(1, 3);
+        vector<int> laneIndices = {0, 1, 2, 3, 4};
+        
+        unsigned seed = chrono::high_resolution_clock::now().time_since_epoch().count();
+        shuffle(laneIndices.begin(), laneIndices.end(), default_random_engine(seed));
+
+        for (int i = 0; i < numToSpawn; ++i) {
+            spawnEnemyInLane(laneIndices[i]);
+        }
+
         spawnTimer = 0.0f;
-        spawnInterval = max(0.45f, spawnInterval - 0.001f);
+        spawnInterval = max(0.3f, spawnInterval - 0.005f);
     }
 
     for (auto &e : enemies) {
@@ -202,39 +212,40 @@ void Game::update(float dt) {
         e.update(dt);
     }
 
-    // collision (simple overlap like ref)
-    // for (auto &e : enemies) {
-    //     if (!e.isActive()) continue;
+    for (auto &e : enemies) {
+        if (!e.isActive()) continue;
 
-    //     // if (e.getY() < board->getY() - e.getH() / 2) continue; // Re-enabled
+        // if (e.getY() < board->getY() - e.getH() / 2) continue; // Re-enabled
 
-    //     int ax1 = player->getX();
-    //     int ay1 = player->getY();
-    //     int ax2 = ax1 + player->getW() - 1;
-    //     int ay2 = ay1 + player->getH() - 1;
+        int ax1 = player->getX();
+        int ay1 = player->getY();
+        int ax2 = ax1 + player->getW() - 1;
+        int ay2 = ay1 + player->getH() - 1;
 
-    //     int bx1 = e.getX();
-    //     int by1 = e.getY();
-    //     int bx2 = bx1 + e.getW() - 1;
-    //     int by2 = by1 + e.getH() - 1;
+        int bx1 = e.getX();
+        int by1 = e.getY();
+        int bx2 = bx1 + e.getW() - 1;
+        int by2 = by1 + e.getH() - 1;
 
-    //     bool horiz = !(ax2 < bx1 || bx2 < ax1);
-    //     bool vert  = !(ay2 < by1 || by2 < ay1);
+        bool horiz = !(ax2 < bx1 || bx2 < ax1);
+        bool vert  = !(ay2 < by1 || by2 < ay1);
 
-    //     if (horiz && vert) {
-    //         running = false;
-    //         return;
-    //     }
+        if (horiz && vert) {
+            running = false;
+            return;
+        }
 
-    //     if (e.getY() > board->getY() + board->getHeight()) {
-    //         e.deactivate();
-    //         score++;
-    //         if (score % 6 == 0) {
-    //             level++;
-    //             baseSpeed += 0.1f; // Increase speed more gradually
-    //         }
-    //     }
-    // }
+        if (e.getY() > board->getY() + board->getHeight()) {
+            e.deactivate();
+            score++;
+            if (score > 0 && score % 50 == 0) {
+                level++;
+                baseSpeed += 1.0f;
+            }
+            int lane = random_range(0, 4);
+            spawnEnemyInLane(lane);
+        }
+    }
 }
 
 void Game::render() {
